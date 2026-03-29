@@ -1,0 +1,1 @@
+{"completed_previous_round_flag": true, "id": "edge_node_edge_1", "name": "edge_app_edge_1", "fed_node_type": 3, "ip_address": "rabbitmq", "port": 8081, "parent_node_id": "fog_node_001", "parent_node_name": "fog_app", "parent_node_fed_node_type": 2, "parent_node_ip_address": "fog_app", "parent_node_port": 8081}

@@ -1,0 +1,102 @@
+services:
+  # --- Брокер сообщений (Один на всю систему) ---
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: fl_rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    networks:
+      - fl_network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_running"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # --- Cloud Node ---
+  cloud_app:
+    build:
+      context: .
+      dockerfile: cloud_node/Dockerfile
+    container_name: fl_cloud
+    ports:
+      - "8081:8081"
+    environment:
+      - RABBITMQ_HOST=rabbitmq
+      - NODE_TYPE=cloud
+    volumes:
+      - ./cache:/app/cache
+      - ./results:/app/results
+    depends_on:
+      - rabbitmq
+    networks:
+      - fl_network
+
+  # --- Fog Node ---
+  fog_app:
+    build:
+      context: .
+      dockerfile: fog_node/Dockerfile
+    container_name: fl_fog
+    ports:
+      - "8082:8081"
+    environment:
+      - RABBITMQ_HOST=rabbitmq
+      - CLOUD_HOST=cloud_app
+      - NODE_TYPE=fog
+    volumes:
+      - ./cache:/app/cache
+    depends_on:
+      - rabbitmq
+      - cloud_app
+    networks:
+      - fl_network
+
+  # --- Edge Node 1 ---
+  edge_app_1:
+    build:
+      context: .
+      dockerfile: edge_node/Dockerfile
+    container_name: fl_edge_1
+    ports:
+      - "8083:8081"
+    environment:
+      - RABBITMQ_HOST=rabbitmq
+      - FOG_HOST=fog_app
+      - NODE_TYPE=edge
+      - NODE_ID=edge_1
+    volumes:
+      - ./edge_data_1:/app/data
+      - ./flags:/app/flags
+    depends_on:
+      - rabbitmq
+      - fog_app
+    networks:
+      - fl_network
+
+  # --- Edge Node 2 (Важно для федерации) ---
+  edge_app_2:
+    build:
+      context: .
+      dockerfile: edge_node/Dockerfile
+    container_name: fl_edge_2
+    ports:
+      - "8084:8081"
+    environment:
+      - RABBITMQ_HOST=rabbitmq
+      - FOG_HOST=fog_app
+      - NODE_TYPE=edge
+      - NODE_ID=edge_2
+    volumes:
+      - ./edge_data_2:/app/data
+      - ./flags:/app/flags
+    depends_on:
+      - rabbitmq
+      - fog_app
+    networks:
+      - fl_network
+
+networks:
+  fl_network:
+    driver: bridge

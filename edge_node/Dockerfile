@@ -1,0 +1,38 @@
+FROM python:3.10-slim
+
+WORKDIR /app
+
+# Создаем необходимую структуру папок
+RUN mkdir "/app/models"
+RUN mkdir "/app/data"
+RUN mkdir "/app/data/filtered_data"
+RUN mkdir "/app/cache"
+RUN mkdir "/app/flags"
+
+COPY edge_node/requirements.txt /app/edge_node/
+
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    python3-dev \
+    iputils-ping \
+    iproute2 \
+    dnsutils \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN pip install --no-cache-dir \
+    --default-timeout=100 \
+    --retries 5 \
+    --index-url https://pypi.tuna.tsinghua.edu.cn/simple \
+    -r /app/edge_node/requirements.txt
+
+COPY edge_node /app/edge_node
+COPY shared /app/shared
+
+# Строки COPY для data и flags удалены, так как мы используем volumes в docker-compose.yml
+# Это позволит разным Edge-контейнерам иметь разные данные
+
+ENV PYTHONPATH=/app:/app/edge_node:/app/shared
+
+EXPOSE 8081
+
+CMD ["uvicorn", "edge_node.app_factory:app", "--host", "0.0.0.0", "--port", "8081"]
