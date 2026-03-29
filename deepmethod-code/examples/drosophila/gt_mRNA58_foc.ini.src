@@ -1,0 +1,64 @@
+[default_settings]
+max_threads=24
+proportional_stop=1e-5
+stop_count=10
+population_size=120
+recombination_strategy=de_3_exp_rand
+recombination_weight=0
+recombination_prob=0
+recombination_gamma=0.9
+es_lambda=30
+es_cutoff=3
+es_kind=0
+mean_cost=0
+noglobal_eps=-1
+substeps=0.005
+substieps=0
+ca_flag=1
+logdepth=2
+transform=tanh
+gamma_init=1.0
+precision=16
+keep_order=1
+roundoff_error=1e-06
+seed=@SEED@
+run_before=initcancel;optpost;optposteval;printlog;writelog;
+run=gcadeep;5;gacdeep;1;gdeep;1;edeep;1;sdeep;24;selde;1;dpupdate;1;checkcancel;1;substitute;2;optpost;1;optposteval;1;printlog;1;writelog;1;
+run_after=optpost;optposteval;printlog;writelog;
+
+[default_target]
+debug=0
+# sum of all
+mainfunc=target;objfunc;0;1;0;
+# proteins
+pfunc_chi_00=penalty;readpenalty;1;0.95;0.01;
+pfunc_wpgp_00=penalty;readpenalty;2;0.75;500000;
+# mrna
+mfunc_chi_00=penalty;readpenalty;3;0.95;0.01;
+mfunc_wpgp_00=penalty;readpenalty;4;0.75;200000;
+# focus
+ffunc_00=penalty;readpenalty;5;0.95;0.01;
+# parameters
+func_penl=readpenalty;6;0.45;0.005;
+
+
+[default_model]
+debug=0
+parts=R;2;T;4;E;16;M;2;P;16;h;2;D;2;lambda;2;tau;2;m;1;mm;1;
+mask=0;0; 0;0;0;0; 0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0; 0;0; 0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0; 0;0; 0;0; 0;0; 0;0; 0; 0;
+parms=0;0; 0;0;0;0; 0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0; 0;0; 0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0; 0;0; 0;0; 0;0; 0;0; 0; 0;
+dparms=0;0; 0;0;0;0; 0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0; 0;0; 0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0; 0;0; 0;0; 0;0; 0;4; 0; 0;
+partype=0;0; 0;0;0;0; 0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0; 0;0; 0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0; 0;0; 0;0; 0;0; 0;0; 0; 0;
+#lbound=0.00001;0.00001; 0;0;0;0; 0;0;-1000;-1000;-1000;-1000;-1000;-1000;-1000;-1000;-1000;-1000;-1000;-1000;-1000;-1000; -10;-10; 0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001; 1;1;1;1;1;1;1;1; 0.0000005;-2500; 0;0; 1.0;1.0; 1.0;0; 149.0; 1.0;
+#hbound=1.0;20.0; 0;0;0;1000; 1000;1000;0;0;0;0;0;0;0;0;0;0;0;0;0;0; 100;0; 0.05;0.05;0.05;0.05;0.05;0.05;0.05;0.05; 5;5;5;5;5;5;5;5; 0.00001;0; 1.0;1.0; 25;25; 8;0; 200; 3.1;
+lbound=0.00001;0.00001; 0;0;0;0; -1000;-1000;-1000;-1000;-1000;-1000;-1000;-1000;-1000;-1000;-1000;-1000;-1000;-1000;-1000;-1000; -10;-10; 0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001; 1;1;1;1;1;1;1;1; 0.0000005;-2500; 0;0; 1.0;1.0; 1.0;0; 149.0; 1.0;
+hbound=1.0;20.0; 0;0;0;1000; 1000;1000;1000;1000;1000;1000;1000;1000;1000;1000;1000;1000;1000;1000;1000;1000; 100;0; 0.05;0.05;0.05;0.05;0.05;0.05;0.05;0.05; 5;5;5;5;5;5;5;5; 0.00001;0; 1.0;1.0; 25;25; 8;0; 200; 3.1;
+tweak=1;1; 1;0;0;0; 1;1;1;1;1;1;1;0;0;0;0;0;0;0;0;0; 0;0; 1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1; 1;0; 1;1; 1;1; 1;0; 1; 1;
+scale=1;1; 1;1;1;1; 1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1; 1;1; 1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1; 1;1; 1;1; 1;1; 1;1; 1; 1;
+limited=1;1; 1;1;1;1; 1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1; 1;1; 1;1;1;1;1;1;1;1;1;1;1;1;1;1;1;1; 1;1; 1;1; 1;1; 1;1; 1; 1;
+command=gcdm_printscore -O hes -X ddmrna -H -i 1 -s dde21d -a 1e-2 -g n -Z -x input -p -A ari -r -R gt_mRNA58_new.gd
+convert=gcdm
+delimiters=\s=\n wprs=
+keys=6;14;27;35;41;48;58;
+mapping=5;0;1;2;3;4;6;
+

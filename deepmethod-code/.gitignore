@@ -1,0 +1,78 @@
+# For autoreconf
+Makefile.in
+/aclocal.m4
+/autom4te.cache/
+/config.*
+/configure
+/INSTALL
+/compile
+/depcomp
+/install-sh
+/ltmain.sh
+/missing
+
+# For configure
+/Makefile
+/doc/Makefile
+/libdeep/.deps/
+/libdeep/Makefile
+/libdeep/libdeep-1.0.pc
+/libtool
+/libxmod/.deps/
+/libxmod/Makefile
+/libxmod/libxmod-1.0.pc
+/nsis/DEEPMETHOD.nsis
+/nsis/mingwbuild
+/po/Makefile
+/po/POTFILES
+/po/stamp-it
+/stamp-h1
+/tools/.deps/
+/tools/Makefile
+
+# For make
+.libs/
+/po/ru.gmo
+/tools/deepmethod
+
+# For C project
+# Object files
+*.o
+*.ko
+*.obj
+*.elf
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Libraries
+*.lib
+*.a
+*.la
+*.lo
+
+# Shared objects (inc. Windows DLLs)
+*.dll
+*.so
+*.so.*
+*.dylib
+
+# Executables
+*.exe
+*.out
+*.app
+*.i*86
+*.x86_64
+*.hex
+
+# Debug files
+*.dSYM/
+
+# Qt user files
+Nir.pro.user
+
+/intltool-extract.in
+/intltool-merge.in
+/intltool-update.in
+/configure~

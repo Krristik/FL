@@ -1,0 +1,131 @@
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=utf-8\n"
+
+msgid "Usage:"
+msgstr "Использование:"
+
+msgid "Help Options:"
+msgstr "Опции помощи:"
+
+msgid "Show help options"
+msgstr "Поазать помощь"
+
+msgid "Application Options:"
+msgstr "Опции приложения:"
+
+#: ../tools/deepmethod.c:80
+msgid "File name for everything and default group names"
+msgstr "Имя файла настроек с имена групп по-умолчанию"
+
+#: ../tools/deepmethod.c:80
+msgid "FILENAME"
+msgstr "ИМЯ"
+
+#: ../tools/deepmethod.c:81
+msgid "File name where model is described"
+msgstr "Имя файла с описанием модели"
+
+#: ../tools/deepmethod.c:82
+msgid "Group name where model is described"
+msgstr "Имя группы с описанием модели"
+
+#: ../tools/deepmethod.c:82
+msgid "GROUP"
+msgstr "ГРУППА"
+
+#: ../tools/deepmethod.c:83
+msgid "File name where settings are described"
+msgstr "Имя файла с настройками метода"
+
+#: ../tools/deepmethod.c:84
+msgid "Group name where settings are described"
+msgstr "Имя группы с настройками метода"
+
+#: ../tools/deepmethod.c:85
+msgid "File name where target is described"
+msgstr "Имя файла с настройками цели"
+
+#: ../tools/deepmethod.c:86
+msgid "Group name where target is described"
+msgstr "Имя группы с настройками цели"
+
+#: ../tools/deepmethod.c:87
+msgid "File name to write"
+msgstr "Имя файла для записи"
+
+#: ../tools/deepmethod.c:88
+msgid "What to do"
+msgstr "Что нужно сделать"
+
+#: ../tools/deepmethod.c:88
+msgid "OPERATION"
+msgstr "ОПЕРАЦИЯ"
+
+#: ../tools/deepmethod.c:89
+msgid "Extract line from log"
+msgstr "Извлечь строку лога"
+
+#: ../tools/deepmethod.c:89
+msgid "NUMBER"
+msgstr "НОМЕР"
+
+#: ../tools/deepmethod.c:117
+msgid "DEEP optimizer, version "
+msgstr "ППРЭ оптимизатор, версия "
+
+#: ../tools/deepmethod.c:117
+msgid "- DEEP optimizer"
+msgstr "- ППРЭ оптимизатор"
+
+#: ../tools/deepmethod.c:121
+#, c-format
+msgid "option parsing failed: %s\n"
+msgstr "разбор опций провалился: %s\n"
+
+#: ../tools/deepmethod.c:126
+#, c-format
+msgid "%s called with wrong options for model"
+msgstr "%s вызвана с неправильными опциями для модели"
+
+#: ../tools/deepmethod.c:134
+#, c-format
+msgid "%s called with wrong options for settings"
+msgstr "%s вызвана с неправильными опциями для настроек"
+
+#: ../tools/deepmethod.c:142
+#, c-format
+msgid "%s called with wrong options for target"
+msgstr "%s вызвана с неправильными опциями для цели"
+
+#: ../tools/deepmethod.c:150
+#, c-format
+msgid "%s called with wrong options for output"
+msgstr "%s вызвана с неправильными опциями для вывода"
+
+#: ../tools/deepmethod.c:157
+#, c-format
+msgid "%s called with wrong options for operation"
+msgstr "%s вызвана с неправильными опциями для операции"
+
+#: ../tools/deepmethod.c:164
+#, c-format
+msgid "Settings init:%s"
+msgstr "Инициализация настроек: %s"
+
+#: ../tools/deepmethod.c:185
+#, c-format
+msgid "Settings process init:%s"
+msgstr "Инициализация настроек процесса: %s"
+
+#: ../tools/deepmethod.c:199
+#, c-format
+msgid "Monitor error:%s"
+msgstr "Ошибка монитора:%s"
+
+#: ../tools/deepmethod.c:209
+msgid "Loop finished with an unknown error.\nOutput not produced."
+msgstr "Цикл завершился с неизвестной ошибкой.\nРезультаты не достигнуты."
+
+msgid "Print out run-time info"
+msgstr "Выводить информацию о выполнении"

@@ -1,0 +1,70 @@
+.\" This is a man page for the deepmethod command.
+.
+.\" Written by Konstantin Kozlov, St.Petersburg, Russia , 17 May 2016.
+.TH DEEPMETHOD 1 "5/17/2016" "(C) Peter the Great St.Petersburg Polytechnic University." "Konstantin Kozlov"
+.
+.SH NAME
+deepmethod \- Optimize using DEEP.
+.TP
+deepmethod_openmpi \- Optimize using DEEP with OpenMPI.
+.
+.SH SYNOPSIS
+.B deepmethod [OPTION...]
+.TP
+.B deepmethod_openmpi [OPTION...]
+.
+.SH DESCRIPTION
+The
+.B deepmethod
+calls DEEP method.
+The
+.B deepmethod_openmpi
+calls DEEP method and uses OpenMPI.
+.TP
+Use 
+.B G_MESSAGE_DEBUG="DeepMethod,XmModel" 
+to debug.
+.
+.SH OPTIONS
+.TP
+.BR \-h ", " \-\-help " Show help options"
+.TP
+.BR \-\-default-name =\fIFILENAME\fR 
+File name for everything and default group names
+.TP
+.BR \-\-model-file =\fIFILENAME\fR
+File name where model is described
+.TP
+.BR \-\-model-group =\fIGROUP\fR
+Group name where model is described
+.TP
+.BR \-\-settings-file =\fIFILENAME\fR
+File name where settings are described
+.TP
+.BR \-\-settings-group =\fIGROUP\fR
+Group name where settings are described
+.TP
+.BR \-\-target-file =\fIFILENAME\fR
+File name where target is described
+.TP
+.BR \-\-target-group =\fIGROUP\fR
+Group name where target is described
+.TP
+.BR \-\-output-file =\fIFILENAME\fR
+File name to write
+.TP
+.BR \-\-operation =\fIOPERATION\fR
+What to do
+.TP
+.BR \-\-monitor =\fINUMBER\fR
+Extract line from log
+.
+.SH BUGS
+The order of directives in the model section is not arbittrary as the
+memory can be allocated only at ciretain steps.
+.
+.SH AUTHOR
+Konstantin Kozlov <mackoel@gmail.com>
+.
+.SH SEE ALSO
+deepmethod.conf(5)

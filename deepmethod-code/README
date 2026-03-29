@@ -1,0 +1,54 @@
+== Description ==
+
+Novel software framework to solve the inverse problem of mathematical modelling.
+
+== License ==
+
+The code is licensed under GNU General Public License version 3.
+
+== How to cite in publications ==
+
+@article{Kozlov11,
+ author = {Konstantin Kozlov and Alexander Samsonov},
+ title = {DEEP -- Differential Evolution Entirely
+ Parallel Method for Gene Regulatory Networks},
+ journal = {Journal of Supercomputing},
+ year = {2011},
+ volume = {57},
+ pages = {172-178}
+}
+
+@article{Kozlov13,
+ author = {Konstantin Kozlov and Nikita Ivanisenko and Vladimir Ivanisenko and Nikolay Kolchanov and Maria Samsonova and Alexander M. Samsonov},
+ title = {{Enhanced Differential Evolution Entirely Parallel Method for Biomedical Applications}},
+ journal = {{LNCS 7979}},
+ volume = {V. Malyshkin (Ed.): PaCT 2013},
+ pages = {409--416},
+ year = {2013}
+}
+
+== Get the sources: ==
+
+git clone git://git.code.sf.net/p/deepmethod/code deepmethod-code
+
+To update the source tree to the latest you'll need to:
+
+cd deep
+git pull
+
+== Prerequisites: ==
+
+glib-2.0 >= 2.22
+gthread-2.0 >= 2.22
+gio-2.0 >= 2.22
+
+== Build: ==
+
+cd deep
+autoreconf -fi
+./configure --prefix=/usr/local
+make
+su -c 'make install'
+
+mackoel@gmail.com
+

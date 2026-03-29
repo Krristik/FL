@@ -1,0 +1,1 @@
+mpicc -o deepmethod_mpich  -DHAVE_CONFIG_H  -DDEEPMETHOD_LOCALEDIR=\"/home2/ioffe3/kkozlov/share/locale\"  -DMPIZE  -I. -Ilibxmod -Ilibdeep libxmod/*.c libdeep/*.c tools/*.c  -I/usr/include/glib-2.0 -I/usr/lib64/glib-2.0/include -DG_LOG_DOMAIN=\"DeepMethod\"  -pthread -lgthread-2.0 -lgio-2.0 -lgobject-2.0 -lglib-2.0 -lm

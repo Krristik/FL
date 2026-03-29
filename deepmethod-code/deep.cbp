@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6" />
+	<Project>
+		<Option title="deep" />
+		<Option makefile_is_custom="1" />
+		<Option pch_mode="2" />
+		<Option compiler="gcc" />
+		<MakeCommands>
+			<Build command="$make -f $makefile $target" />
+			<CompileFile command="$make -f $makefile $file" />
+			<Clean command="$make -f $makefile clean" />
+			<DistClean command="$make -f $makefile distclean$target" />
+			<AskRebuildNeeded command="$make -q -f $makefile $target" />
+			<SilentBuild command="$make -s -f $makefile $target" />
+		</MakeCommands>
+		<Build>
+			<Target title="all">
+				<Option output="deep" prefix_auto="1" extension_auto="1" />
+				<Option type="1" />
+				<Option compiler="gcc" />
+				<Option use_console_runner="0" />
+				<MakeCommands>
+					<Build command="$make -f $makefile $target" />
+					<CompileFile command="$make -f $makefile $file" />
+					<Clean command="$make -f $makefile clean" />
+					<DistClean command="$make -f $makefile distclean$target" />
+					<AskRebuildNeeded command="$make -q -f $makefile $target" />
+					<SilentBuild command="$make -s -f $makefile $target" />
+				</MakeCommands>
+			</Target>
+		</Build>
+		<Compiler>
+			<Add option="-Wall" />
+		</Compiler>
+		<Unit filename="libdeep/dpdeep.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="libdeep/dpdeep.h" />
+		<Unit filename="libdeep/dpevaluation.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="libdeep/dpevaluation.h" />
+		<Unit filename="libdeep/dpindivid.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="libdeep/dpindivid.h" />
+		<Unit filename="libdeep/dploop.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="libdeep/dploop.h" />
+		<Unit filename="libdeep/dpmutation.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="libdeep/dpmutation.h" />
+		<Unit filename="libdeep/dpopt.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="libdeep/dpopt.h" />
+		<Unit filename="libdeep/dposda.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="libdeep/dposda.h" />
+		<Unit filename="libdeep/dppopulation.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="libdeep/dppopulation.h" />
+		<Unit filename="libdeep/dprecombination.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="libdeep/dprecombination.h" />
+		<Unit filename="libdeep/dpsettings.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="libdeep/dpsettings.h" />
+		<Unit filename="libdeep/dptarget.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="libdeep/dptarget.h" />
+		<Unit filename="libxmod/xmmodel.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="libxmod/xmmodel.h" />
+		<Unit filename="tools/dpdeepctl.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="tools/dpdeepctl.h" />
+		<Unit filename="tools/xmtranslate.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="tools/xmtranslate.h" />
+		<Extensions>
+			<envvars />
+			<code_completion />
+			<debugger />
+			<lib_finder disable_auto="1" />
+		</Extensions>
+	</Project>
+</CodeBlocks_project_file>

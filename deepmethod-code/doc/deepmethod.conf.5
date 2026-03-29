@@ -1,0 +1,197 @@
+.\" This is a man page for the deepmethod configuration file.
+.
+.\" Written by Konstantin Kozlov, St.Petersburg, Russia , 17 May 2016.
+.TH DEEPMETHOD.CONF 5 "5/17/2016" "(C) Peter the Great St.Petersburg Polytechnic University." "Konstantin Kozlov"
+.
+.SH NAME
+deepmethod.conf \- DEEP optimizer configuration file.
+.
+.SH SYNOPSIS
+.B deepmethod.conf is to be unique for each run.
+.
+.SH DESCRIPTION
+The
+.B deepmethod.conf
+file defines the control parameters of DEEP method.
+
+It consists of three sections: for minimizer settings, target settings and model settings.
+.TP
+.
+.BR [default_settings]
+.TP
+.BR max_threads =\fINUMBER\fR
+maximal number of threads to start
+.TP
+.BR proportional_stop|absolute_stop|absolute_score|absolute_iter|absolute_time =\fINUMBER\fR
+type of stopping criterion and the value of error
+.TP
+.BR stop_count =\fINUMBER\fR
+number of steps for stopping
+.TP
+.BR population_size =\fINUMBER\fR
+number of members of the population
+.TP
+.BR recombination_strategy =\fIde_3_bin|de_3_exp|de_3_exp_T|de_3_bin_T|de_3_bin_rand|de_3_exp_rand|de_3_exp_rand_T|de_3_bin_rand_T\fR
+type of evolution
+.TP
+.BR recombination_weight =\fINUMBER\fR
+scaling factor, 0 means adaptation
+.TP
+.BR recombination_prob =\fINUMBER\fR
+probability, 0 means adaptation
+.TP
+.BR recombination_gamma =\fINUMBER\fR
+adaptation parameter
+.TP
+.BR es_lambda =\fINUMBER\fR
+number of individuals to exchange.
+.TP
+.BR noglobal_eps =\fI-1|0|NUMBER\fR
+small or big cube in parameter space, 0 - big, -1 - big and initial guess is ignored.
+.TP
+.BR transform =\fItanh|sin|alg|rand\fR
+type of transform for parameters with box constraints
+.TP
+.BR gamma_init =\fINUMBER\fR
+parameter for constraints transform
+.TP
+.BR roundoff_error =\fINUMBER\fR
+safety offset
+.TP
+.BR es_cutoff =\fINUMBER\fR
+cutoff for the age
+.TP
+.BR es_kind =\fI0|1\fR
+with what to substitute: 0 - best, 1 - less better
+.TP
+.BR substeps =\fI0|-1|NUMBER\fR
+0 - use limits, -1 - do not perturb, 0.1 - use vecinity
+.TP
+.BR substieps =\fI0|-1|NUMBER\fR
+0 - use limits, -1 - do not perturb, 0.1 - use vecinity
+.TP
+.BR ca_flag =\fI0|1\fR
+0 - use space for the best, 1 - distribute equaly
+.TP
+.BR logdepth =\fI0|1|2\fR
+log more info
+.TP
+.BR seed =\fINUMBER\fR
+seed for pseudo random numbers
+.TP
+.BR run_before =\fIinitstop;optpost;optposteval;writelog;printlog;\fR
+functions to run befor main loop
+.TP
+.BR run =\fIgcadeep;5;gdeep;1;edeep;1;sdeep;24;selde;1;checkstop;1;optpost;1;optposteval;1;writelog;1;printlog;1;\fR
+functions to run in main loop with number of tau's
+.TP
+.BR run_after =\fIoptpost;optposteval;writelog;printlog;\fR
+functions to run after main loop
+.TP
+.BR [default_target]
+.TP
+.BR <name> =\fI<keyword>;<index>;<rank>;<weight>\fR
+.TP
+.BR <weight>
+is the multiplier for the function value in the final value
+.TP
+.BR <rank>
+is the value with wich the random number is compared to decide if the decrease in this function is worth
+.TP
+.BR <index>
+-1 means "before anything else", 0 means it is the main scoring function, >1 - for penalties
+.TP
+.BR <keyword>
+.TP
+.BR doubletoint ", " doubletoindex
+convert parameters to integers
+.TP
+.BR scoreint ", " scoredouble
+scoring functions
+.TP
+.BR readpenalty
+read the value of the penalty from scoring program output
+.TP
+.BR [default_model]
+.TP
+.BR parts
+is the list of headers in paramters file with the number of parameters in each line
+.TP
+.BR mask =\fI1;0;...;0;\fR | nummask =\fINUMBER\fR
+mask is an array of 0 and 1 of the length that is the number of parameters (not used). nummask specifies the number of 1 in the array.
+.TP
+.BR parms =\fI2;3;1;...;5;\fR | numparms =\fINUMBER\fR
+parms are the values of the parameters as integers, numparms is the number of parameters.
+.TP
+.BR dparms =\fI0.1;0.2;...;0.9\fR | numdparms =\fINUMBER\fR
+dparms are the values of parameters as doubles, numdparms is the number of parameters.
+.TP
+.BR tweak =\fI1;0;1;...;1;\fR | numtweak =\fINUMBER\fR | valnottweak =\fI2;3;1;...;5;\fR
+tweak defines if the value can be changed. numtweak is the number of parameters to tweak. 1 will be inserted in first numtweak places, all others will be set to 0. valnottweak is the list of indices to be set to 0, all others will be set to 1;
+.TP
+.BR lbound =\fI0.1;0.2;...;0.9\fR | vallbound =\fINUMBER\fR
+lbound is the list of lower bounds for each parameter individually, vallbound is the lower bound for all parameters.
+.TP
+.BR hbound =\fI0.1;0.2;...;0.9\fR | valhbound =\fINUMBER\fR
+hbound is the list of upper bounds for each parameter individually, valhbound is the upper bound for all parameters.
+.TP
+.BR command =\fISTRING\fR
+is run to get the score. The parameter file is simply appended to this string.
+.TP
+.BR partype =\fI0;0;1...;0;\fR
+0 - double, 1 - integer, 2 - integer.
+.TP
+.BR convert =\fITYPE\fR
+Optional. Defines the parameter's file format. The following formats are supported:
+.TP
+.BR sdf
+for molecules.
+.TP
+.BR gemstat
+for gemstat program.
+.TP
+.BR subset
+for integer indices
+.TP
+.BR subsubset
+for subset of integer indices
+.TP
+.BR octave
+to use in Octave with source command
+.TP
+.BR r
+to use in R with source command
+.TP
+.BR gcdm
+for gcdm program
+.TP
+.BR delimiters =\fISTRING\fR
+are used to parse the output of the command
+.TP
+.BR keys =\fI1;0;2;...;10;\fR
+defines the indices of the elements of the parsed output that we need
+.TP
+.BR type =\fIinterpreter|command\fR
+defines the type of program for model
+.TP
+.BR num_threads =\fINUMBER\fR
+number of concyrrent threads for interpreter
+.TP
+.BR timeoutsec =\fINUMBER\fR
+waiting time for interpreter
+.TP
+.BR mapping =\fI1;10;...;0;\fR
+defines the reordering of keys
+.
+.SH FILES
+The actual name of the file is not important. Each section can be placed in a separate file and a group name can be arbitrary. These data can be given on the command line. The names of log, state and pareto front files are produced from the name of the output file that also can be supplied on the command line.
+.
+.SH BUGS
+The order of directives in the model section is not arbittrary as the
+memory can be allocated only at ciretain steps.
+.
+.SH AUTHOR
+Konstantin Kozlov <mackoel@gmail.com>
+.
+.SH SEE ALSO
+deepmethod(1)

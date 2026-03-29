@@ -1,0 +1,13 @@
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+libdir=@libdir@
+datarootdir=@datarootdir@
+datadir=@datadir@
+includedir=@includedir@/libdeep
+
+Name: libdeep
+Description: Library for DEEP with OpenMPI.
+Version: @VERSION@
+Requires: glib-2.0
+Libs: -L${libdir} -ldeep_openmpi
+Cflags: -I${includedir}
