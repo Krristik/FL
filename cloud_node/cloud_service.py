@@ -37,7 +37,6 @@ class FederatedSimulationState(Enum):
 
 
 class CloudService:
-    # Адрес RabbitMQ читаем из переменной окружения, дефолт - имя сервиса в docker-compose
     CLOUD_RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "rabbitmq")
     FOG_CLOUD_RECEIVE_QUEUE = "fog_to_cloud_queue"
     CLOUD_TO_FOG_SEND_EXCHANGE = "cloud_to_fog_exchange"
@@ -299,14 +298,22 @@ class CloudService:
         fog_model_file_name = CloudResourcesPaths.FOG_MODEL_FILE_NAME.format(child_id=child_id)
         fog_model_file_path = os.path.join(CloudResourcesPaths.MODELS_FOLDER_PATH, fog_model_file_name)
 
+        os.makedirs(CloudResourcesPaths.MODELS_FOLDER_PATH, exist_ok=True)
         with open(fog_model_file_path, "wb") as fog_model_file:
             fog_model_file.write(fog_model_file_bytes)
+            fog_model_file.flush()
+            os.fsync(fog_model_file.fileno())  # ← Принудительный сброс буфера ОС на диск
+
+        if not os.path.exists(fog_model_file_path) or os.path.getsize(fog_model_file_path) == 0:
+            logger.error(f"[CRITICAL] File not written correctly for {child_id}")
+            return
 
         logger.info(f"Received message from fog {child_id}. The fog model was saved successfully.")
 
         CloudService.received_fog_messages[child_id] = {
             "fog_model_file_path": fog_model_file_path,
-            "lambda_prev": lambda_prev_value
+            "lambda_prev": lambda_prev_value,
+            "dataset_size": message.get("dataset_size", 0)
         }
 
         # Once messages from all fogs are received, process them
@@ -331,12 +338,17 @@ class CloudService:
         """Start listening to the RabbitMQ queue for incoming messages.
         This stops automatically when the cooling scheduler stops."""
         while True:
+            if CloudService.federated_simulation_state in (FederatedSimulationState.PRETRAINING,
+                                                           FederatedSimulationState.TRAINING):
+                if not CloudService.cloud_cooling_scheduler.is_cloud_cooling_operational():
+                    logger.info("Cooling process finished. Exiting fog listener thread permanently for this round.")
+                    break
             connection = None
             try:
                 connection = pika.BlockingConnection(
                     pika.ConnectionParameters(
                         host=CloudService.CLOUD_RABBITMQ_HOST,
-                        heartbeat=30
+                        heartbeat=200
                     )
                 )
                 channel = connection.channel()
