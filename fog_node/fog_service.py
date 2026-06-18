@@ -21,6 +21,15 @@ from shared.shared_resources_paths import SharedResourcesPaths
 from shared.utils import delete_all_files_in_folder
 from shared.logging_config import logger
 from shared.fed_node.fed_node import MessageScope
+from fog_node.model_manager import execute_models_aggregation, read_lambda_prev, save_lambda_prev
+
+import os
+USE_DEEP = os.getenv("USE_DEEP", "false").lower() == "true"
+
+if USE_DEEP:
+    from fog_node.deep_engine import DeepEngine as GeneticEngine
+else:
+    from fog_node.genetics.genetic_engine import GeneticEngine
 
 
 class FogServiceState(Enum):
@@ -40,7 +49,7 @@ class FogService:
     # В симуляции Fog и Cloud используют один и тот же RabbitMQ
     FOG_RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "rabbitmq")
     FOG_EDGE_SEND_EXCHANGE = "fog_to_edge_exchange"
-    EDGE_FOG_RECEIVE_QUEUE = "edge_to_fog_queue"
+    EDGE_FOG_RECEIVE_QUEUE = f"edge_to_fog_{os.getenv('NODE_ID', '1')}_queue"
 
     genetic_engine = GeneticEngine()
     fog_cooling_scheduler: FogCoolingScheduler = None
@@ -50,6 +59,10 @@ class FogService:
     edge_evaluation_performances = {}
     edge_responses_counter = 0
     messages_to_trainable_edges = {}
+
+    edge_training_metrics = {}  # Накопление метрик Edge за текущий раунд
+    collected_edge_models = {}
+    current_round_date = None   # Дата раунда для имени файла
 
     @staticmethod
     def get_fog_service_state():
@@ -140,7 +153,7 @@ class FogService:
                     return pika.BlockingConnection(
                         pika.ConnectionParameters(
                             host=host,
-                            heartbeat=30,
+                            heartbeat=300,
                             connection_attempts=3,
                             retry_delay=1
                         )
@@ -256,6 +269,10 @@ class FogService:
         try:
             start_date = message.get("start_date")
             current_date = message.get("end_date")
+            FogService.edge_training_metrics = {}  # Сброс буфера метрик
+            FogService.fog_dataset_size = 0
+            FogService.collected_edge_models = {}
+            FogService.current_round_date = current_date  # Фиксация даты раунда
             is_cache_active = message.get("is_cache_active")
             genetic_evaluation_strategy = message.get("genetic_evaluation_strategy")
             model_type = message.get("model_type")
@@ -382,8 +399,11 @@ class FogService:
                         FogService.get_edge_model(message)
                         FogService.fog_cooling_scheduler.has_reached_stopping_condition_for_cooler()
 
-                        if not FogService.fog_cooling_scheduler.is_fog_cooling_operational():
-                            logger.info("Stopping queue listener as cooling process is complete.")
+                        if len(FogService.collected_edge_models) == len(NodeState.get_current_node().child_nodes):
+                            logger.info("All edge models collected. Stopping queue listener.")
+                            channel.stop_consuming()
+                        elif not FogService.fog_cooling_scheduler.is_fog_cooling_operational():
+                            logger.info("Cooling finished before all edges responded. Stopping listener.")
                             channel.stop_consuming()
                     elif message.get("scope") == MessageScope.EVALUATION.value:
                         FogService.edge_evaluation_performances[message.get("edge_mac")] = (message.get("metrics"),
@@ -402,23 +422,18 @@ class FogService:
                         if message.get("enough_data_existence"):
                             FogService.edge_responses_counter += 1
                         else:
-                            logger.info("Stopping queue listener as receiving not enough data existence process is "
-                                        "complete.")
+                            logger.info("Not enough data reported by an edge. Stopping listener.")
                             channel.stop_consuming()
-                            params = {
-                                "enough_data_existence": False
-                            }
-                            FogService.send_fog_model_to_cloud(MessageScope.TEST_DATA_ENOUGH_EXISTS, params)
+                            FogService.send_fog_model_to_cloud(MessageScope.TEST_DATA_ENOUGH_EXISTS,
+                                                               {"enough_data_existence": False})
+                            return  # Выходим, чтобы не выполнить код ниже дважды
 
                         children_number = len(NodeState.get_current_node().child_nodes)
-                        if FogService.edge_responses_counter == children_number:
-                            logger.info("Stopping queue listener as receiving enough data existence process is "
-                                        "complete.")
+                        if FogService.edge_responses_counter >= children_number:
+                            logger.info("All edges confirmed enough data. Stopping listener.")
                             channel.stop_consuming()
-                            params = {
-                                "enough_data_existence": True
-                            }
-                            FogService.send_fog_model_to_cloud(MessageScope.TEST_DATA_ENOUGH_EXISTS, params)
+                            FogService.send_fog_model_to_cloud(MessageScope.TEST_DATA_ENOUGH_EXISTS,
+                                                               {"enough_data_existence": True})
 
                 logger.info("Listening for messages from edge nodes...")
                 channel.basic_consume(queue=FogService.EDGE_FOG_RECEIVE_QUEUE, on_message_callback=callback,
@@ -442,31 +457,60 @@ class FogService:
         try:
             if not FogService.fog_cooling_scheduler.is_fog_cooling_operational():
                 return
-            edge_model_file_bytes = base64.b64decode(message["model_file"])
-            metrics = message.get("metrics")
-            edge_id = message.get("edge_id")
 
-            edge_model_file_name = FogResourcesPaths.EDGE_MODEL_FILE_NAME
+            edge_id = message.get("edge_id")
+            metrics = message.get("metrics")
+
+            if metrics and edge_id:
+                FogService.edge_training_metrics[edge_id] = metrics
+                FogService.fog_dataset_size = getattr(FogService, 'fog_dataset_size', 0) + int(
+                    metrics.get("dataset_size", 0))
+
+            # Сохраняем модель с уникальным именем по edge_id
+            edge_model_file_bytes = base64.b64decode(message["model_file"])
+            edge_model_file_name = f"edge_model_{edge_id}.keras"
             edge_model_file_path = os.path.join(FogResourcesPaths.MODELS_FOLDER_PATH, edge_model_file_name)
 
             with open(edge_model_file_path, "wb") as edge_model_file:
                 edge_model_file.write(edge_model_file_bytes)
 
-            logger.info(f"Received message from edge {edge_id}. Continuing with model aggregation.")
+            FogService.collected_edge_models[edge_id] = {
+                "model_path": edge_model_file_path,
+                "metrics": metrics
+            }
 
-            FogService.fog_service_state = FogServiceState.AGGREGATION
-            execute_models_aggregation(FogService.fog_cooling_scheduler, metrics)
+            logger.info(f"Received model from edge {edge_id}. "
+                        f"Collected {len(FogService.collected_edge_models)}/"
+                        f"{len(NodeState.get_current_node().child_nodes)} edges.")
+
+            # Агрегируем только когда получены все edge модели
+            if len(FogService.collected_edge_models) == len(NodeState.get_current_node().child_nodes):
+                logger.info("All edge models received. Running aggregation.")
+                FogService.fog_service_state = FogServiceState.AGGREGATION
+                execute_models_aggregation(FogService.collected_edge_models)
+                delete_all_files_in_folder(FogResourcesPaths.MODELS_FOLDER_PATH, filter_string="edge")
 
         except Exception as e:
             logger.error(f"Error processing message: {str(e)}")
-
-        # deleting the received edge model file keeping only the fog model
-        delete_all_files_in_folder(FogResourcesPaths.MODELS_FOLDER_PATH, filter_string="edge")
 
     @staticmethod
     def send_fog_model_to_cloud(model_scope: MessageScope, params):
         message = None
         if model_scope.value == MessageScope.TRAINING.value:
+            if FogService.edge_training_metrics and FogService.current_round_date:
+                try:
+                    metrics_dir = os.path.join(os.path.dirname(__file__), "collected_metrics")
+                    os.makedirs(metrics_dir, exist_ok=True)
+                    metrics_file = os.path.join(metrics_dir, f"metrics_round_{FogService.current_round_date}.json")
+                    with open(metrics_file, "w", encoding="utf-8") as f:
+                        json.dump({
+                            "evaluation_date": FogService.current_round_date,
+                            "fog_mac": get_mac_address(),
+                            "edges": FogService.edge_training_metrics
+                        }, f, indent=2)
+                    logger.info(f"Performance metrics saved locally to {metrics_file}")
+                except Exception as e:
+                    logger.error(f"Failed to save metrics locally: {e}")
             logger.info("Running the sending of the fog model to cloud.")
 
             fog_model_file_path = os.path.join(FogResourcesPaths.MODELS_FOLDER_PATH,
@@ -475,12 +519,18 @@ class FogService:
                 model_bytes = model_file.read()
                 model_file_base64 = base64.b64encode(model_bytes).decode("utf-8")
 
+            current_lambda = read_lambda_prev()
+            new_lambda = current_lambda + 1
+            save_lambda_prev(new_lambda)
+            logger.info(f"Lambda participation counter updated: {current_lambda} -> {new_lambda}")
+
             message = {
                 "scope": model_scope.value,
                 "fog_id": NodeState.get_current_node().id,
                 "fog_mac": get_mac_address(),
-                "lambda_prev": read_lambda_prev(),
-                "model_file": model_file_base64
+                "lambda_prev": new_lambda,
+                "model_file": model_file_base64,
+                "dataset_size": getattr(FogService, 'fog_dataset_size', 0)
             }
         elif model_scope.value == MessageScope.EVALUATION.value:
             logger.info("Running the sending of edge results to cloud.")
@@ -531,6 +581,13 @@ class FogService:
 
                 if model_scope.value == MessageScope.TRAINING.value:
                     logger.info("Fog has sent fog model to cloud node.")
+                    time.sleep(5)
+
+                    # ✅ Удалять ТОЛЬКО edge-модели, не трогать fog_model и файлы с id
+                    delete_all_files_in_folder(
+                        FogResourcesPaths.MODELS_FOLDER_PATH,
+                        filter_string="edge"  # Удаляет только файлы, содержащие "edge" в имени
+                    )
                 else:
                     logger.info("Fog has sent edge results to cloud node.")
             except Exception as e:
