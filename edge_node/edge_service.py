@@ -17,6 +17,8 @@ from shared.utils import delete_all_files_in_folder, publish_message
 from shared.logging_config import logger
 from shared.utils import metric_weights
 from shared.system_metric_collector import SystemMetricCollector
+import datetime
+
 
 
 class EdgeService:
@@ -37,6 +39,16 @@ class EdgeService:
     )
 
     @staticmethod
+    def _get_target_fog_queue() -> str:
+        """Динамически определяет имя очереди Fog на основе ID родительского узла."""
+        current = NodeState.get_current_node()
+        if current and current.parent_node:
+            # parent.id имеет вид 'fog_node_1' или 'fog_node_2' → берём суффикс
+            suffix = current.parent_node.id.split('_')[-1]
+            return f"edge_to_fog_{suffix}_queue"
+        return EdgeService.EDGE_FOG_SEND_QUEUE  # fallback для обратной совместимости
+
+    @staticmethod
     def init_rabbitmq() -> None:
         """
         Initialize RabbitMQ connection and declare queues with retry logic.
@@ -53,7 +65,7 @@ class EdgeService:
                     return pika.BlockingConnection(
                         pika.ConnectionParameters(
                             host=host,
-                            heartbeat=30,
+                            heartbeat=250,
                             connection_attempts=3,
                             retry_delay=1
                         )
@@ -76,7 +88,7 @@ class EdgeService:
         channel.queue_declare(queue=EdgeService.FOG_EDGE_RECEIVE_QUEUE, durable=True)
         channel.queue_bind(queue=EdgeService.FOG_EDGE_RECEIVE_QUEUE, exchange=EdgeService.FOG_EDGE_RECEIVE_EXCHANGE,
                            routing_key=NodeState.get_current_node().id)
-        channel.queue_declare(queue=EdgeService.EDGE_FOG_SEND_QUEUE, durable=True)
+        channel.queue_declare(queue=EdgeService._get_target_fog_queue(), durable=True)
         connection.close()
         logger.info(f"Successfully connected to RabbitMQ at {EdgeService.FOG_RABBITMQ_HOST}")
 
@@ -144,7 +156,7 @@ class EdgeService:
                 connection = pika.BlockingConnection(
                     pika.ConnectionParameters(
                         host=EdgeService.FOG_RABBITMQ_HOST,
-                        heartbeat=30
+                        heartbeat=600
                     )
                 )
                 channel = connection.channel()
@@ -196,7 +208,7 @@ class EdgeService:
             try:
                 EdgeService._start_publisher_loop()
                 # Always publish to the fixed queue.
-                target_queue = EdgeService.EDGE_FOG_SEND_QUEUE
+                target_queue = EdgeService._get_target_fog_queue()
                 future = asyncio.run_coroutine_threadsafe(
                     publish_message(
                         EdgeService.FOG_RABBITMQ_HOST,
@@ -221,11 +233,12 @@ class EdgeService:
         try:
             # Process the incoming message using the shared evaluation logic.
             response = EdgeService._process_message(message)
+            target_q = EdgeService._get_target_fog_queue()
             if response.get("scope") == MessageScope.TEST_DATA_ENOUGH_EXISTS.value:
-                logger.info(f"Publishing to fixed queue {EdgeService.EDGE_FOG_SEND_QUEUE} response -> edge_id: "
+                logger.info(f"Publishing to queue {target_q} response -> edge_id: "
                             f"{response['edge_id']}, enough_data_existence: {response['enough_data_existence']}.")
             else:
-                logger.info(f"Publishing to fixed queue {EdgeService.EDGE_FOG_SEND_QUEUE} response -> edge_id: "
+                logger.info(f"Publishing to queue {target_q} response -> edge_id: "
                             f"{response['edge_id']}, metrics: {response['metrics']}.")
             # Publish response to the fixed queue
             EdgeService.publish_response(response)
@@ -287,8 +300,13 @@ class EdgeService:
                     model_file.write(model_file_bytes)
                 logger.info(f"Received fog model saved at: {edge_model_file_path}")
 
-                if start_date is not None:
-                    # Pretraining process.
+                # === НОВАЯ МАРШРУТИЗАЦИЯ ПО SCOPE ===
+
+                is_training_scope = (scope == MessageScope.TRAINING.value)
+                has_start_date = (start_date is not None and str(start_date).strip() != "")
+
+                if is_training_scope and has_start_date:
+                    # PRETRAINING: явный интервал start_date → current_date (1 день)
                     EdgeService.system_metrics_collector.start()
                     metrics = pretrain_edge_model(
                         edge_model_file_path, start_date, current_date,
@@ -297,13 +315,13 @@ class EdgeService:
                     EdgeService.system_metrics_collector.stop()
                     system_metrics = EdgeService.system_metrics_collector.get_average_metrics()
 
-                    pretrained_model_file_path = os.path.join(
+                    pretrained_model_path = os.path.join(
                         EdgeResourcesPaths.MODELS_FOLDER_PATH,
                         EdgeResourcesPaths.RETRAINED_EDGE_MODEL_FILE_NAME
                     )
-                    with open(pretrained_model_file_path, "rb") as model_file:
-                        model_bytes = model_file.read()
-                        model_file_base64_resp = base64.b64encode(model_bytes).decode("utf-8")
+                    with open(pretrained_model_path, "rb") as mf:
+                        model_file_base64_resp = base64.b64encode(mf.read()).decode("utf-8")
+
                     response = {
                         "edge_id": NodeState.get_current_node().id,
                         "edge_mac": get_mac_address(),
@@ -312,71 +330,58 @@ class EdgeService:
                         "model_file": model_file_base64_resp,
                         "scope": MessageScope.TRAINING.value
                     }
-                else:
-                    if scope == MessageScope.EVALUATION.value:
-                        EdgeService.system_metrics_collector.start()
 
-                        eval_seq_length = EdgeService.sequence_length // 2
+                elif is_training_scope and not has_start_date:
+                    # RETRAINING: current_date как якорь, автоматические окна 2+2 дня
+                    EdgeService.system_metrics_collector.start()
+                    metrics = retrain_edge_model(
+                        edge_model_file_path, current_date,
+                        learning_rate, batch_size, epochs, patience, fine_tune_layers, EdgeService.sequence_length
+                    )
+                    EdgeService.system_metrics_collector.stop()
+                    system_metrics = EdgeService.system_metrics_collector.get_average_metrics()
 
-                        metrics, prediction_pairs = evaluate_edge_model(edge_model_file_path, current_date,
-                                                                        EdgeService.sequence_length)
-                        EdgeService.system_metrics_collector.stop()
-                        system_metrics = EdgeService.system_metrics_collector.get_average_metrics()
+                    def compute_weighted_score(m, w):
+                        return sum(w[metric] * m[metric] for metric in w)
 
-                        response = {
-                            "edge_id": NodeState.get_current_node().id,
-                            "edge_mac": get_mac_address(),
-                            "metrics": metrics,
-                            "system_metrics": system_metrics,
-                            "prediction_pairs": prediction_pairs,
-                            "scope": MessageScope.EVALUATION.value,
-                            "evaluation_date": current_date
-                        }
-                    else:
-                        # Retraining process.
-                        EdgeService.system_metrics_collector.start()
-                        metrics = retrain_edge_model(
-                            edge_model_file_path, current_date,
-                            learning_rate, batch_size, epochs, patience, fine_tune_layers, EdgeService.sequence_length
-                        )
-                        EdgeService.system_metrics_collector.stop()
-                        system_metrics = EdgeService.system_metrics_collector.get_average_metrics()
+                    score_before = compute_weighted_score(metrics["before_training"], metric_weights)
+                    score_after = compute_weighted_score(metrics["after_training"], metric_weights)
 
-                        def compute_weighted_score(metrics_for_score, weights_for_score):
-                            return sum(
-                                weight * metrics_for_score[metric] for metric, weight in weights_for_score.items())
+                    model_path_to_send = (
+                        os.path.join(EdgeResourcesPaths.MODELS_FOLDER_PATH,
+                                     EdgeResourcesPaths.RETRAINED_EDGE_MODEL_FILE_NAME)
+                        if score_after < score_before else edge_model_file_path
+                    )
+                    with open(model_path_to_send, "rb") as mf:
+                        model_file_base64_resp = base64.b64encode(mf.read()).decode("utf-8")
 
-                        score_before = compute_weighted_score(metrics["before_training"], metric_weights)
-                        score_after = compute_weighted_score(metrics["after_training"], metric_weights)
+                    response = {
+                        "edge_id": NodeState.get_current_node().id,
+                        "edge_mac": get_mac_address(),
+                        "metrics": metrics,
+                        "system_metrics": system_metrics,
+                        "model_file": model_file_base64_resp,
+                        "scope": MessageScope.TRAINING.value
+                    }
 
-                        if score_after < score_before:
-                            retrained_model_file_path = os.path.join(
-                                EdgeResourcesPaths.MODELS_FOLDER_PATH,
-                                EdgeResourcesPaths.RETRAINED_EDGE_MODEL_FILE_NAME
-                            )
-                            with open(retrained_model_file_path, "rb") as model_file:
-                                model_bytes = model_file.read()
-                                model_file_base64_resp = base64.b64encode(model_bytes).decode("utf-8")
-                            response = {
-                                "edge_id": NodeState.get_current_node().id,
-                                "edge_mac": get_mac_address(),
-                                "metrics": metrics,
-                                "system_metrics": system_metrics,
-                                "model_file": model_file_base64_resp,
-                                "scope": MessageScope.TRAINING.value
-                            }
-                        else:
-                            with open(edge_model_file_path, "rb") as model_file:
-                                model_bytes = model_file.read()
-                                model_file_base64_resp = base64.b64encode(model_bytes).decode("utf-8")
-                            response = {
-                                "edge_id": NodeState.get_current_node().id,
-                                "edge_mac": get_mac_address(),
-                                "metrics": metrics,
-                                "system_metrics": system_metrics,
-                                "model_file": model_file_base64_resp,
-                                "scope": MessageScope.TRAINING.value
-                            }
+                elif scope == MessageScope.EVALUATION.value:
+                    # EVALUATION: 7-дневное окно без обучения
+                    EdgeService.system_metrics_collector.start()
+                    metrics, prediction_pairs = evaluate_edge_model(
+                        edge_model_file_path, current_date, EdgeService.sequence_length
+                    )
+                    EdgeService.system_metrics_collector.stop()
+                    system_metrics = EdgeService.system_metrics_collector.get_average_metrics()
+
+                    response = {
+                        "edge_id": NodeState.get_current_node().id,
+                        "edge_mac": get_mac_address(),
+                        "metrics": metrics,
+                        "system_metrics": system_metrics,
+                        "prediction_pairs": prediction_pairs,
+                        "scope": MessageScope.EVALUATION.value,
+                        "evaluation_date": current_date
+                    }
             except Exception as e:
                 logger.warning(f"There was met an error in process message: {e}")
                 response = {"error": str(e)}
