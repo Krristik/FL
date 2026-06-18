@@ -4,6 +4,8 @@ import time
 from enum import Enum
 from shared.logging_config import logger
 
+#не используется при нашей архитектуре, оставлено для совместимости
+
 
 class CoolingStrategy(Enum):
     BOLTZMANN = 1
