@@ -11,6 +11,13 @@ from edge_node.data_preprocessing import preprocess_data
 from shared.utils import required_columns
 from shared.logging_config import logger
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
+import datetime
+
+from shared.utils import metric_weights
+
+def compute_weighted_score(m: dict) -> float:
+    """Вычисляет взвешенный скор. Игнорирует отсутствующие метрики (вес 0)."""
+    return sum(metric_weights[k] * m.get(k, 0.0) for k in metric_weights)
 
 # Setting the environment variable to suppress TensorFlow low-level logs
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
@@ -198,7 +205,8 @@ def pretrain_edge_model(edge_model_file_path: str, start_date: str, end_date: st
 
     metrics = {
         "before_training": eval_before,
-        "after_training": eval_after
+        "after_training": eval_after,
+        "dataset_size": len(X_seq)
     }
 
     pretrained_model_file_path = os.path.join(EdgeResourcesPaths.MODELS_FOLDER_PATH,
@@ -298,7 +306,8 @@ def retrain_edge_model(edge_model_file_path: str, start_date: str, learning_rate
 
     metrics = {
         "before_training": evaluation_before,
-        "after_training": evaluation_after
+        "after_training": evaluation_after,
+        "dataset_size": len(X_train_seq) + len(X_eval_seq)
     }
 
     retrained_edge_model_file_path = os.path.join(EdgeResourcesPaths.MODELS_FOLDER_PATH,
@@ -351,6 +360,7 @@ def evaluate_edge_model(edge_model_file_path: str, start_date: str, sequence_len
     logger.info("Evaluating the model on seven days of data...")
     predictions = model.predict(X_eval_seq)
     metrics = compute_metrics(y_eval_seq, predictions)
+    metrics["test_size"] = len(X_eval_seq)
     logger.info(f"Evaluation metrics: {metrics}")
     predictions_flat = predictions.flatten()
     real_values = y_eval_seq.flatten()
